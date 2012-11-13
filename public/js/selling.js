@@ -20,7 +20,7 @@ wn.provide("erpnext");
 erpnext.Selling = erpnext.TaxesAndTotals.extend({
 	refresh: function(doc, cdt, cdn) {
 		this._super();
-		this.toggle_currency_display(doc, cdt, cdn);
+		this.set_price_list_details();
 		this.set_dynamic_labels();
 		this.set_sales_bom_help();
 	},
@@ -48,7 +48,7 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 			callback: function(r, rt) {
 				me.frm.refresh();
 				if (old_price_list != me.frm.doc.price_list_name) 
-					me.price_list_name();
+					me.set_price_list_details();
 			}
 		});
 	},
@@ -75,14 +75,6 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 			this.customer_address();
 	},
 	
-	customer_address.on_new: function(docname) {
-		this.on_new_master("Address", docname);
-	},
-	
-	contact_person.on_new: function(docname) {
-		this.on_new_master("Contact", docname);
-	},
-	
 	on_new_master: function(doctype, docname) {
 		locals[doctype][docname].customer = 
 		 	locals[this.frm.doc.doctype][this.frm.doc.name].customer;
@@ -90,63 +82,75 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 		 	locals[this.frm.doc.doctype][this.frm.doc.name].customer_name;
 	},
 	
-	project_name: function(){
+	project_name: function() {
 		if (this.frm.doc.project_name) {
 			wn.call({
 				doc: me.frm.doc,
-				method: "get_project_details"
+				method: "get_project_details",
 				callback: function(r, rt) {
-					me.refresh();
+					me.frm.refresh();
+				}
+			});
+		}
+	},
+	
+	set_price_list_details: function() {
+		var me = this;
+		
+		if (this.frm.doc.price_list_name && this.frm.doc.currency) {
+			wn.call({
+				doc: me.frm.doc,
+				method: "set_price_list_details",
+				callback: function(r, rt) {
+					// toggle display relevant fields
+					unhide_field(["price_list_currency", "plc_exchange_rate", "exchange_rate"]);
+					if (r.message.length == 1 && 
+							me.frm.doc.price_list_currency == me.frm.doc.currency) {
+						hide_field(["price_list_currency", "plc_exchange_rate"]);
+					}
+					
+					if (me.frm.doc.plc_exchange_rate == 1) hide_field("plc_exchange_rate");
+					if (me.frm.doc.exchange_rate == 1) hide_field("exchange_rate");
+					
+					me.frm.toggle_display(['grand_total_print', 'rounded_total_print',
+						'rounded_total_in_words_print'], me.frm.doc.exchange_rate != 1)
+					
+					// refresh relevant fields, 
+					// did not called full form refresh because of infinte loop
+					refresh_field(["currency", "exchange_rate", 
+						"price_list_currency", "plc_exchange_rate", me.item_table_field])
 				}
 			});
 		}
 	},
 	
 	price_list_name: function() {
-		var me = this;
-		var callback = function() {
-			if(me.frm.doc.price_list_name && me.frm.doc.currency && me.frm.doc.price_list_currency
-				 	&& me.frm.doc.exchange_rate && me.frm.doc.plc_exchange_rate) {
-				wn.call({
-					docs: me.frm.doc,
-					method: "get_price_list_rate",
-					callback: function(r, rt) {
-						refresh_field(me.item_table_field);
-						// to-do
-						// recalculate amount and taxes
-					}
-				});
-			}
-		}
-		this.toggle_currency_display(callback);
+		this.set_price_list_details();
 	},
 	
 	currency: function() {
-		this.price_list_name();
+		this.set_price_list_details();
 	},
 	
 	price_list_currency: function() {
-		this.price_list_name();
+		this.set_price_list_details();
 	},
 	
 	exchange_rate: function() {
-		this.price_list_name();
+		this.set_price_list_details();
 	},
 	
 	plc_exchange_rate: function() {
-		this.price_list_name();
+		this.set_price_list_details();
 	},
 	
 	company: function() {
-		var me = this;
 		default_currency = wn.boot.company[this.frm.doc.company].default_currency;
 		set_multiple(me.frm.doc.doctype, me.frm.doc.name, {
 			"currency": default_currency,
-			"price_list_currency": default_currency,
 			"exchange_rate": 1,
-			"plc_exchange_rate": 1
 		});
-		this.price_list_name();
+		this.set_price_list_details();
 	},
 	
 	warehouse: function(doc, cdt , cdn) {
@@ -210,102 +214,66 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 		}
 	},
 	
-	toggle_currency_display: function(doc, cdt, cdn) {
-		var me = this;
-		
-		if (this.frm.doc.price_list_name && this.frm.doc.currency) {
-			wn.call({
-				doc: me.frm.doc,
-				method: "get_price_list_currency",
-				args: {
-					"price_list": me.frm.doc.price_list_name, 
-					"company": me.frm.doc.company
-				},
-				callback: function(r, rt) {
-					pl_currencies = r.message ? r.message[0] : [];
-					base_currency = r.message[1];
-					unhide_field(['price_list_currency', 'plc_exchange_rate']);
-					
-					// if price list maintained in single currency, set same as price list currency
-					// and if that is same as order currency copy exchange rate as well
-					if (pl_currencies.length == 1) {
-						set_multiple(cdt, cdn, { price_list_currency: pl_currencies[0]});
-						if (pl_currencies[0] == me.frm.doc.currency) {
-							set_multiple(cdt, cdn, { plc_exchange_rate: me.frm.doc.exchange_rate});
-							hide_field(['price_list_currency', 'plc_exchange_rate']);
-						}
-					}
-					// if price list currency is same as base currency, set plc_exchnage_rate as 1
-					if (me.frm.doc.price_list_currency == base_currency) {
-						set_multiple(cdt, cdn, { plc_exchange_rate:1});
-						hide_field('plc_exchange_rate');
-					}
-					
-					// if order currency is same as base_currency, set exchange_rate as 1
-					if (me.frm.doc.currency == base_currency) {
-						set_multiple(cdt, cdn, { exchange_rate:1});
-						hide_field("exchange_rate");
-					}
-					
-					me.toggle_display(['grand_total_print', 'rounded_total_print',
-					 	'rounded_total_in_words_print'], me.frm.doc.exchange_rate != 1)
-				}
-			});
-		}
-	},
-	
 	set_dynamic_labels: function() {
 		var me = this;
+		var base_currency = wn.boot.company[this.frm.doc.company].default_currency;
 		
 		var _set_labels = function(fields, currency, dt) {
 			for (f in fields) {
-				if (dt == me.frm.doctype) {
+				if (dt == me.frm.doc.doctype) {
 					me.frm.fields_dict[f].label_span.innerHTML 
-						= fields_dict[f] + ' (' + currency + ')';
+						= me.frm.fields_dict[f] + ' (' + currency + ')';
 				} else {
-					$('[data-grid-fieldname="' + table_fieldname + '-' + f + '"]').html(
-						fields[f] + ' (' + currency + ')');
+					$('[data-grid-fieldname="' + dt + '-' + f + '"]').html(fields[f] 
+						+ ' (' + currency + ')');
 				}
-			}			
+			}
 		};
 		
 		var _map = function(field_currency_map) {
-			for (dt in field_currency_map) {
-				for (currency in field_currency_map[dt]) 
-					_set_labels(field_currency_map[dt][currency], currency, dt);
+			for (doc_type in field_currency_map) {
+				for (currency_type in field_currency_map[doc_type]) {
+					var fields = field_currency_map[doc_type][currency_type];
+					var currency = currency_type == "base_currency" ? 
+						base_currency : me.frm.doc.currency;
+					var dt = (doc_type == "parent_dt" ? me.frm.doc.doctype : 
+						(doc_type == "item_dt" ? me.frm.doc.doc_type + " Item" : doc_type));
+						
+					_set_labels(fields, currency, dt);
+				}
 			}
 		};
-				
+		
 		// set fields label as per currency
-		field_currency_map = {
-			this.frm.doc.doctype: {
-				base_currency: {
+		var field_currency_map = {
+			"parent_dt": {
+				"base_currency": {
 					"net_total": "Net Total", 
 					"taxes_and_charges_total": "Taxes and Charges Total", 
 					"grand_total":	"Grand Total", 
 					"rounded_total": "Rounded Total", 
 					"rounded_total_in_words": "In Words"
 				},
-				this.frm.doc.currency: {
+				"print_currency": {
 					"grand_total_print": "Grand Total", 
 					"rounded_total_print":	"Rounded Total", 
 					"rounded_total_in_words_print":	"In Words"
 				}
 			},
-			this.frm.doc.doctype + " Item": {
-				base_currency: {
+			"item_dt": {
+				"base_currency": {
 					"rate": "Basic Rate", 
 					"ref_rate": "Price List Rate", 
 					"amount": "Amount"
 				},
-				this.frm.doc.currency: {
+				"print_currency": {
 					"print_rate": "Basic Rate", 
 					"print_ref_rate": "Price List Rate", 
 					"print_amount": "Amount"
 				}
 			},
 			"Taxes and Charges": {
-				base_currency: {
+				"base_currency": {
 					"tax_amount": "Amount", 
 					"total": "Total"
 				}
@@ -317,8 +285,8 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 		// set label as per currency for extra fields in sales invoice
 		if (this.frm.doc.doctype == 'Sales Invoice') {
 			si_field_currency_map = {
-				this.frm.doc.doctype: {
-					base_currency: {
+				"parent_dt": {
+					"base_currency": {
 						'total_advance': 'Total Advance', 
 						'outstanding_amount': 'Outstanding Amount', 
 						'paid_amount': 'Paid Amount', 
@@ -326,7 +294,7 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 					}
 				},
 				"Sales Invoice Advance": {
-					base_currency: {
+					"base_currency": {
 						'advance_amount': 'Advance Amount', 
 						'allocated_amount': 'Allocated Amount'
 					}
@@ -342,9 +310,9 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 			'Price List Currency Exchange Rate (' + this.frm.doc.price_list_currency + 
 			' -> '+ base_currency + ')';
 			
-		// hide base currency columns in item table if order currency is same as base currency
-		var hide = (doc.currency == base_currency) ? false : true;
-		for (f in field_currency_map[this.frm.doc.doctype + " Item"][base_currency]) {
+		// hide base currency columns in item table if print currency is same as base currency
+		var hide = (this.frm.doc.currency == base_currency) ? false : true;
+		for (f in field_currency_map["item_dt"]["base_currency"]) {
 			this.frm.fields_dict[this.item_table_field].grid.set_column_disp(f, hide);
 		}
 	},
@@ -359,13 +327,12 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 		if (inList(['Delivery Note', 'Sales Invoice'], doc.doctype)) {
 			var help_msg = "";
 			if (has_packing_item) {
-				help_msg = """<div class='alert'> \
+				help_msg = "<div class='alert'> \
 					For 'Sales BOM' items, warehouse, serial no and batch no \
 					will be considered from the 'Packing List' table. \
-					If warehouse and batch no are same for all packing items for any 
-					'Sales BOM' item, those values can be entered in the main item table, 
-					values will be copied to 'Packing List' table. \
-				</div>""";
+					If warehouse and batch no are same for all packing items for any \
+					'Sales BOM' item, those values can be entered in the main item table, \
+					values will be copied to 'Packing List' table. </div>";
 			}
 			wn.meta.get_docfield(doc.doctype, 'sales_bom_help', doc.name).options = help_msg;
 			refresh_field('sales_bom_help');
@@ -415,22 +382,32 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 		}
 		
 		// project name
-		this.frm.fields_dict['project_name'].get_query = function() {
-			var condition = '';
-			if (doc.customer) 
-				condition = ' AND (ifnull(customer, "") = "" or customer = "' +  
-					this.frm.doc.customer + '")';
+		if (this.frm.fields_dict.project_name) {
+			this.frm.fields_dict.project_name.get_query = function() {
+				var condition = '';
+				if (doc.customer) 
+					condition = ' AND (ifnull(customer, "") = "" or customer = "' +  
+						this.frm.doc.customer + '")';
 				
-			return repl('SELECT name FROM `tabProject` WHERE status not in \
-				("Completed", "Cancelled") AND name LIKE \"%s\" %(condition)s \
-				ORDER BY name ASC LIMIT 50', { condition: condition});
+				return repl('SELECT name FROM `tabProject` WHERE status not in \
+					("Completed", "Cancelled") AND name LIKE \"%s\" %(condition)s \
+					ORDER BY name ASC LIMIT 50', { condition: condition});
+			}
 		}
 		
 		// territory
-		this.frm.fields_dict['territory'].get_query = function() {
+		this.frm.fields_dict.territory.get_query = function() {
 			return 'SELECT name, parent_territory FROM `tabTerritory` \
 				WHERE ifnull(is_group, "No") = "No" AND docstatus != 2 \
 				AND %(key)s LIKE \"%s\"	ORDER BY name ASC LIMIT 50';
+		}
+		
+		this.frm.fields_dict.customer_address.on_new = function(docname) {
+			me.on_new_master("Address", docname);
+		}
+
+		this.frm.fields_dict.contact_person.on_new = function(docname) {
+			me.on_new_master("Contact", docname);
 		}
 	},
 })

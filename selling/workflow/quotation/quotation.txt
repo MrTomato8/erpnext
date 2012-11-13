@@ -2,9 +2,9 @@
  {
   "owner": "Administrator", 
   "docstatus": 0, 
-  "creation": "2012-10-30 14:28:55", 
+  "creation": "2012-10-30 14:55:51", 
   "modified_by": "Administrator", 
-  "modified": "2012-10-30 14:28:55"
+  "modified": "2012-11-12 14:39:47"
  }, 
  {
   "name": "__common__", 
@@ -25,6 +25,7 @@
  {
   "is_custom": "No", 
   "name": "__common__", 
+  "is_active": 1, 
   "doctype": "Workflow", 
   "workflow_state_field": "status", 
   "document_type": "Quotation"

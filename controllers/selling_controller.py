@@ -164,7 +164,7 @@ class SellingController(AccountsController):
 			item.print_amount = flt(item.qty, self.precision.item.qty) * ref_rate / exchange_rate
 			item.discount = 0
 			item.ref_rate = ref_rate
-			item.rate = ref_rate			
+			item.rate = ref_rate
 			item.amount = flt(item.qty, self.precision.item.qty) * ref_rate
 			
 	def get_ref_rate(self, item_code):
@@ -185,11 +185,26 @@ class SellingController(AccountsController):
 			'total_commission': (commission_rate * 
 				flt(self.doc.net_total, self.precision.main.net_total)) / 100.0
 		}
-	def get_price_list_currency(self, args):
-		""" Get all currencies in which price list is maintained"""
-		plc = webnotes.conn.sql("""select distinct ref_currency from `tabItem Price` 
-			where price_list_name = %s""", args.get("price_list_name"))
-		plc = [d[0] for d in plc]
-		import setup
-		default_currency = setup.get_currency(args.get("company"))
-		return plc, default_currency
+
+	def set_price_list_details(self):
+		from setup.utils import get_currency
+		base_currency = get_currency(self.doc.company)
+		
+		price_list_currency = webnotes.conn.sql("""select distinct ref_currency from `tabItem Price` 
+			where price_list_name = %s""", self.doc.price_list_name)
+			
+		# if order currency is same as base_currency, set exchange_rate as 1
+		if self.doc.exchange_rate == base_currency:
+			self.doc.exchange_rate = 1
+		
+		# if price list maintained in single currency, set same as price list currency
+		if len(price_list_currency) == 1:
+			self.doc.price_list_currency = price_list_currency[0][0]
+			
+		# if price list currency is same as order currency copy exchange rate
+		if self.doc.price_list_currency == self.doc.currency:
+			self.doc.plc_exchange_rate = self.doc.exchange_rate
+		
+		self.get_price_list_rate()
+
+		return price_list_currency

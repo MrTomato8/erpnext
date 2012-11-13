@@ -112,7 +112,7 @@ class DocType(SellingController):
 				self.doc.contact_by, "email_id")
 			if webnotes.conn.exists("Profile", contact_by_email):
 				participants.append(contact_by_email)
-				
+			
 			for p in participants:
 				child = addchild(event, 'event_individuals', 'Event User', 0)
 				child.person = p
