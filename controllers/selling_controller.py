@@ -22,9 +22,9 @@ from webnotes.utils import add_days, getdate, flt, cint
 from webnotes.model.code import get_obj
 
 import stock.utils
-from controllers.transaction_controller import TransactionController
+from controllers.accounts_controller import AccountsController
 
-class SellingController(TransactionController):
+class SellingController(AccountsController):
 	def autoname(self):
 		self.doc.name = make_autoname(self.doc.naming_series+'.#####')
 	

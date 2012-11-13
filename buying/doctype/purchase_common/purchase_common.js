@@ -267,7 +267,7 @@ cur_frm.cscript.validate = function(doc, cdt, cdn) {
 
 // **************** RE-CALCULATE VALUES ***************************
 
-cur_frm.cscript.recalculate_values = function(doc, cdt, cdn) {
+cur_frm.cscript.calculate_taxes_and_totals = function(doc, cdt, cdn) {
 	cur_frm.cscript.calculate_tax(doc,cdt,cdn);
 }
 
@@ -471,12 +471,12 @@ cur_frm.cscript.calc_other_charges = function(doc , tname , fname , other_fname)
 				var total_amount = flt(tax[t].tax_amount);
 				total_tax_amount = flt(tax[t].total_tax_amount) + flt(total_amount);
 				if(tax[t].category != "Valuation"){
-					set_multiple('Purchase Taxes and Charges', tax[t].name, { 'item_wise_tax_detail':tax[t].item_wise_tax_detail, 'amount':roundNumber(total_amount, 2), 'total':roundNumber(flt(total)+flt(tax[t].tax_amount), 2)}, other_fname);
+					set_multiple('Purchase Taxes and Charges', tax[t].name, { 'item_wise_tax_detail':tax[t].item_wise_tax_detail, 'amount':wn.round(total_amount, 2), 'total':wn.round(flt(total)+flt(tax[t].tax_amount), 2)}, other_fname);
 					prev_total += flt(tax[t].total_amount);
 					total += flt(tax[t].tax_amount);	// for adding total to previous amount			 
 				}
 				else{
-					set_multiple('Purchase Taxes and Charges', tax[t].name, { 'item_wise_tax_detail':tax[t].item_wise_tax_detail, 'amount':roundNumber(total_amount, 2), 'total':roundNumber(flt(total), 2)}, other_fname);
+					set_multiple('Purchase Taxes and Charges', tax[t].name, { 'item_wise_tax_detail':tax[t].item_wise_tax_detail, 'amount':wn.round(total_amount, 2), 'total':wn.round(flt(total), 2)}, other_fname);
 					prev_total = prev_total;
 				}
 				//prev_total += flt(tax[t].total_amount);	 // for previous row total
@@ -499,12 +499,12 @@ cur_frm.cscript.calc_other_charges = function(doc , tname , fname , other_fname)
 				var total_amount = flt(tax[t].tax_amount);
 				total_tax_amount = flt(tax[t].total_tax_amount) - flt(total_amount);
 				if(tax[t].category != "Valuation"){
-					set_multiple('Purchase Taxes and Charges', tax[t].name, { 'item_wise_tax_detail':tax[t].item_wise_tax_detail, 'tax_amount':roundNumber(total_amount, 2), 'total':roundNumber(flt(total)-flt(tax[t].tax_amount), 2)}, other_fname);
+					set_multiple('Purchase Taxes and Charges', tax[t].name, { 'item_wise_tax_detail':tax[t].item_wise_tax_detail, 'tax_amount':wn.round(total_amount, 2), 'total':wn.round(flt(total)-flt(tax[t].tax_amount), 2)}, other_fname);
 					prev_total -= flt(tax[t].total_amount); 
 					total -= flt(tax[t].tax_amount);	// for adding total to previous amount			 
 				}
 				else{
-					set_multiple('Purchase Taxes and Charges', tax[t].name, { 'item_wise_tax_detail':tax[t].item_wise_tax_detail, 'tax_amount':roundNumber(total_amount, 2), 'total':roundNumber(flt(total), 2)}, other_fname);
+					set_multiple('Purchase Taxes and Charges', tax[t].name, { 'item_wise_tax_detail':tax[t].item_wise_tax_detail, 'tax_amount':wn.round(total_amount, 2), 'total':wn.round(flt(total), 2)}, other_fname);
 					prev_total = prev_total;
 				}
 				//prev_total += flt(tax[t].total_amount);	 // for previous row total
@@ -522,7 +522,7 @@ cur_frm.cscript.calc_other_charges = function(doc , tname , fname , other_fname)
 		set_multiple(tname, cl[i].name, {'valuation_tax_amount': item_tax }, fname);
 	}
 	for(var t=0;t<tax.length;t++){
-		tax[t].tax_amount = roundNumber(tax[t].tax_amount, 2);
+		tax[t].tax_amount = wn.round(tax[t].tax_amount, 2);
 	}
 }
 
@@ -593,14 +593,14 @@ cur_frm.cscript.calc_doc_values = function(doc, tname, fname, other_fname) {
 	doc.net_total = flt(net_total);
 	doc.taxes_and_charges_total = flt(total_tax);
 
-	doc.other_charges_added = roundNumber(flt(other_charges_added), 2);
-	doc.other_charges_deducted = roundNumber(flt(other_charges_deducted), 2);
-	doc.grand_total = roundNumber(flt(flt(net_total) + flt(other_charges_added) - flt(other_charges_deducted)), 2);
+	doc.other_charges_added = wn.round(flt(other_charges_added), 2);
+	doc.other_charges_deducted = wn.round(flt(other_charges_deducted), 2);
+	doc.grand_total = wn.round(flt(flt(net_total) + flt(other_charges_added) - flt(other_charges_deducted)), 2);
 	doc.rounded_total = Math.round(doc.grand_total);
-	doc.net_total_print = roundNumber(flt(flt(net_total) / flt(doc.exchange_rate)), 2);
-	doc.other_charges_added_import = roundNumber(flt(flt(other_charges_added) / flt(doc.exchange_rate)), 2);
-	doc.other_charges_deducted_import = roundNumber(flt(flt(other_charges_deducted) / flt(doc.exchange_rate)), 2);
-	doc.grand_total_print = roundNumber(flt(flt(doc.grand_total) / flt(doc.exchange_rate)), 2);
+	doc.net_total_print = wn.round(flt(flt(net_total) / flt(doc.exchange_rate)), 2);
+	doc.other_charges_added_import = wn.round(flt(flt(other_charges_added) / flt(doc.exchange_rate)), 2);
+	doc.other_charges_deducted_import = wn.round(flt(flt(other_charges_deducted) / flt(doc.exchange_rate)), 2);
+	doc.grand_total_print = wn.round(flt(flt(doc.grand_total) / flt(doc.exchange_rate)), 2);
 	doc.rounded_total_import = Math.round(doc.grand_total_print);
 
 	refresh_many(['net_total','total_taxes','grand_total']);

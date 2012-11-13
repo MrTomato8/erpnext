@@ -22,9 +22,9 @@ from webnotes.utils import cint, flt
 from webnotes.model.utils import round_doc
 import json
 
-from webnotes.model.controller import DocListController
+from controllers.transaction_controller import TransactionController
 
-class TaxController(DocListController):
+class TaxController(TransactionController):
 	def append_taxes(self):
 		"""append taxes as per tax master link field"""
 		# clear tax table
@@ -56,6 +56,9 @@ class TaxController(DocListController):
 				* total taxes
 				* grand total
 		"""
+		self.doc.exchange_rate = flt(self.doc.exchange_rate,
+			self.precision.main.exchange_rate)
+		
 		self.calculate_item_values()
 		
 		self.initialize_taxes()
@@ -68,15 +71,11 @@ class TaxController(DocListController):
 		self.set_amount_in_words()
 		
 	def calculate_item_values(self):
-		self.doc.exchange_rate = flt(self.doc.exchange_rate,
-			self.precision.main.exchange_rate)
-			
-		def _set_base(item, from_field, to_field):
+		def _set_base(item, print_field, base_field):
 			"""set values in base currency"""
-			item.fields[to_field] = flt(
-				(flt(item.fields[from_field], self.precision.item[from_field]) * 
-					self.doc.exchange_rate),
-				self.precision.item[to_field])
+			item.fields[base_field] = flt((flt(item.fields[print_field],
+				self.precision.item[print_field]) * self.doc.exchange_rate),
+				self.precision.item[base_field])
 		
 		for item in self.item_doclist:
 			round_doc(item, self.precision.item)
@@ -103,18 +102,6 @@ class TaxController(DocListController):
 			_set_base(item, "print_rate", "rate")
 			_set_base(item, "print_amount", "amount")
 			
-	def calculate_net_total(self):
-		self.doc.net_total = 0
-		self.doc.net_total_print = 0
-		
-		for item in self.item_doclist:
-			self.doc.net_total += item.amount
-			self.doc.net_total_print += item.print_amount
-
-		self.doc.net_total = flt(self.doc.net_total, self.precision.main.net_total)
-		self.doc.net_total_print = flt(self.doc.net_total_print,
-			self.precision.main.net_total_print)
-		
 	def initialize_taxes(self):
 		for tax in self.tax_doclist:
 			# initialize totals to 0
@@ -131,81 +118,19 @@ class TaxController(DocListController):
 			# round relevant values
 			round_doc(tax, self.precision.tax)
 			
-	def validate_on_previous_row(self, tax):
-		"""
-			validate if a valid row id is mentioned in case of
-			On Previous Row Amount and On Previous Row Total
-		"""
-		if tax.charge_type in ["On Previous Row Amount", "On Previous Row Total"] and \
-				(not tax.row_id or tax.row_id >= tax.idx):
-			msgprint((_("Row") + " # %(idx)s [%(taxes_doctype)s]: " + \
-				_("Please specify a valid") + " %(row_id_label)s") % {
-					"idx": tax.idx,
-					"taxes_doctype": self.meta.get_options("taxes_and_charges"),
-					"row_id_label": self.meta.get_label("row_id",
-						parentfield="taxes_and_charges")
-				}, raise_exception=True)
-	
-	def validate_included_tax(self, tax):
-		"""
-			validate conditions related to "Is this Tax Included in Rate?"
-		"""
-		def _on_previous_err(tax, row_range):
-			msgprint((_("Row") + " # %(idx)s [%(taxes_doctype)s]: " + \
-				_("If") + " '%(inclusive_label)s' " + _("is checked for") + \
-				" '%(charge_type_label)s' = '%(charge_type)s', " + _("then") + " " + \
-				_("Row") + " # %(row_range)s " + _("should also have") + \
-				" '%(inclusive_label)s' = " + _("checked")) % {
-					"idx": tax.idx,
-					"taxes_doctype": self.meta.get_options("taxes_and_charges"),
-					"inclusive_label": self.meta.get_label("included_in_print_rate",
-						parentfield="taxes_and_charges"),
-					"charge_type_label": self.meta.get_label("charge_type",
-						parentfield="taxes_and_charges"),
-					"charge_type": tax.charge_type,
-					"row_range": row_range,
-				}, raise_exception=True)
+	def calculate_net_total(self):
+		self.doc.net_total = 0
+		self.doc.net_total_print = 0
 		
-		if cint(tax.included_in_print_rate):
-			if tax.charge_type == "Actual":
-				# now inclusive rate for type 'Actual'
-				msgprint((_("Row") + " # %(idx)s [%(taxes_doctype)s]: " + \
-					"'%(charge_type_label)s' = '%(charge_type)s' " + \
-					_("cannot be included in item's rate")) % {
-						"idx": tax.idx,
-						"taxes_doctype": self.meta.get_options("taxes_and_charges"),
-						"charge_type_label": self.meta.get_label("charge_type",
-							parentfield="taxes_and_charges"),
-						"charge_type": tax.charge_type,
-					}, raise_exception=True)
-					
-			elif tax.charge_type == "On Previous Row Amount" and \
-					not cint(self.tax_doclist[tax.row_id - 1].included_in_print_rate):
-				# for an inclusive tax of type "On Previous Row Amount",
-				# dependent row should also be inclusive
-				_on_previous_err(tax, tax.row_id)
-				
-			elif tax.charge_type == "On Previous Row Total" and \
-					not all([cint(t.included_in_print_rate) \
-						for t in self.tax_doclist[:tax.idx - 1]]):
-				# for an inclusive tax of type "On Previous Row Total", 
-				# all rows above it should also be inclusive
-				_on_previous_err(tax, "1 - %d" % (tax.idx - 1))
-		
-	def _load_item_tax_rate(self, item_tax_rate):
-		if not item_tax_rate:
-			return {}
+		for item in self.item_doclist:
+			self.doc.net_total += item.amount
+			self.doc.net_total_print += item.print_amount
 
-		return json.loads(item_tax_rate)
-		
-	def _get_tax_rate(self, tax, item_tax_map):
-		if item_tax_map.has_key(tax.account_head):
-			return flt(item_tax_map.get(tax.account_head), self.precision.tax.rate)
-		else:
-			return tax.rate
+		self.doc.net_total = flt(self.doc.net_total, self.precision.main.net_total)
+		self.doc.net_total_print = flt(self.doc.net_total_print,
+			self.precision.main.net_total_print)
 			
 	def calculate_taxes(self):
-		# loop through items and set item tax amount
 		for item in self.item_doclist:
 			item_tax_map = self._load_item_tax_rate(item.item_tax_rate)
 			item.valuation_tax_amount = 0
@@ -299,22 +224,20 @@ class TaxController(DocListController):
 			current_tax_amount = (tax_rate / 100.0) * \
 				self.tax_doclist[cint(tax.row_id) - 1].grand_total_for_current_item
 
-		return flt(current_tax_amount, self.precision.tax["tax_amount"])
+		return flt(current_tax_amount, self.precision.tax.tax_amount)
 		
 	def calculate_totals(self):
-		"""calculate total for accounting (base currency)"""
 		if self.tax_doclist:
-			self.doc.grand_total = self.tax_doclist[-1].total
-			self.doc.grand_total_print = self.tax_doclist[-1].total_print
+			self.doc.grand_total = flt(self.tax_doclist[-1].total,
+				self.precision.main.grand_total)
+			self.doc.grand_total_print = flt(self.tax_doclist[-1].total_print,
+				self.precision.main.grand_total_print)
 		else:
-			self.doc.grand_total = self.doc.net_total
-			self.doc.grand_total_print = self.doc.net_total_print
+			self.doc.grand_total = flt(self.doc.net_total,
+				self.precision.main.grand_total)
+			self.doc.grand_total_print = flt(self.doc.net_total_print,
+				self.precision.main.grand_total_print)
 		
-		self.doc.grand_total = flt(self.doc.grand_total,
-			self.precision.main.grand_total)
-		self.doc.grand_total_print = flt(self.doc.grand_total_print,
-			self.precision.main.grand_total_print)
-			
 		self.doc.taxes_and_charges_total = \
 			flt(self.doc.grand_total - self.doc.net_total,
 			self.precision.main.taxes_and_charges_total)
@@ -328,19 +251,80 @@ class TaxController(DocListController):
 		
 	def set_amount_in_words(self):
 		from webnotes.utils import money_in_words
-		default_currency = webnotes.conn.get_value("Company", self.doc.company,
+		base_currency = webnotes.conn.get_value("Company", self.doc.currency,
 			"default_currency")
 		
 		self.doc.grand_total_in_words = money_in_words(self.doc.grand_total,
-			default_currency)
+			base_currency)
 		self.doc.rounded_total_in_words = money_in_words(self.doc.rounded_total,
-			default_currency)
+			base_currency)
 		
 		self.doc.grand_total_in_words_print = \
-			money_in_words(self.doc.grand_total_print, default_currency)
+			money_in_words(self.doc.grand_total_print, self.doc.currency)
 		self.doc.rounded_total_in_words_print = \
-			money_in_words(self.doc.rounded_total_print, default_currency)
+			money_in_words(self.doc.rounded_total_print, self.doc.currency)
 			
+	def validate_on_previous_row(self, tax):
+		"""
+			validate if a valid row id is mentioned in case of
+			On Previous Row Amount and On Previous Row Total
+		"""
+		if tax.charge_type in ["On Previous Row Amount", "On Previous Row Total"] and \
+				(not tax.row_id or tax.row_id >= tax.idx):
+			msgprint((_("Row") + " # %(idx)s [%(taxes_doctype)s]: " + \
+				_("Please specify a valid") + " %(row_id_label)s") % {
+					"idx": tax.idx,
+					"taxes_doctype": tax.parenttype,
+					"row_id_label": self.meta.get_label("row_id",
+						parentfield="taxes_and_charges")
+				}, raise_exception=True)
+	
+	def validate_included_tax(self, tax):
+		"""
+			validate conditions related to "Is this Tax Included in Rate?"
+		"""
+		def _on_previous_row_error(tax, row_range):
+			msgprint((_("Row") + " # %(idx)s [%(taxes_doctype)s]: " + \
+				_("If") + " '%(inclusive_label)s' " + _("is checked for") + \
+				" '%(charge_type_label)s' = '%(charge_type)s', " + _("then") + " " + \
+				_("Row") + " # %(row_range)s " + _("should also have") + \
+				" '%(inclusive_label)s' = " + _("checked")) % {
+					"idx": tax.idx,
+					"taxes_doctype": tax.doctype,
+					"inclusive_label": self.meta.get_label("included_in_print_rate",
+						parentfield="taxes_and_charges"),
+					"charge_type_label": self.meta.get_label("charge_type",
+						parentfield="taxes_and_charges"),
+					"charge_type": tax.charge_type,
+					"row_range": row_range,
+				}, raise_exception=True)
+		
+		if cint(tax.included_in_print_rate):
+			if tax.charge_type == "Actual":
+				# now inclusive rate for type 'Actual'
+				msgprint((_("Row") + " # %(idx)s [%(taxes_doctype)s]: " + \
+					"'%(charge_type_label)s' = '%(charge_type)s' " + \
+					_("cannot be included in item's rate")) % {
+						"idx": tax.idx,
+						"taxes_doctype": self.meta.get_options("taxes_and_charges"),
+						"charge_type_label": self.meta.get_label("charge_type",
+							parentfield="taxes_and_charges"),
+						"charge_type": tax.charge_type,
+					}, raise_exception=True)
+					
+			elif tax.charge_type == "On Previous Row Amount" and \
+					not cint(self.tax_doclist[tax.row_id - 1].included_in_print_rate):
+				# for an inclusive tax of type "On Previous Row Amount",
+				# dependent row should also be inclusive
+				_on_previous_row_error(tax, tax.row_id)
+				
+			elif tax.charge_type == "On Previous Row Total" and \
+					not all([cint(t.included_in_print_rate) \
+						for t in self.tax_doclist[:tax.idx - 1]]):
+				# for an inclusive tax of type "On Previous Row Total", 
+				# all rows above it should also be inclusive
+				_on_previous_row_error(tax, "1 - %d" % (tax.idx - 1))
+		
 	def determine_exclusive_rate(self):
 		if not any((cint(tax.included_in_print_rate) for tax in self.tax_doclist)):
 			# if no tax is marked as included in print rate, no need to proceed further
@@ -406,3 +390,15 @@ class TaxController(DocListController):
 			# print tax.account_head, tax_rate, current_tax_fraction
 
 		return current_tax_fraction
+	
+	def _load_item_tax_rate(self, item_tax_rate):
+		if not item_tax_rate:
+			return {}
+
+		return json.loads(item_tax_rate)
+		
+	def _get_tax_rate(self, tax, item_tax_map):
+		if item_tax_map.has_key(tax.account_head):
+			return flt(item_tax_map.get(tax.account_head), self.precision.tax.rate)
+		else:
+			return tax.rate

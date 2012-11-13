@@ -24,9 +24,10 @@ from webnotes.model.doc import make_autoname, Document
 import json
 
 import stock.utils
-from controllers.tax_controller import TaxController
 
-class TransactionController(TaxController):
+from webnotes.model.controller import DocListController
+
+class TransactionController(DocListController):
 	def __init__(self, doc, doclist):
 		super(TransactionController, self).__init__(doc, doclist)
 		self.cur_docstatus = cint(webnotes.conn.get_value(self.doc.doctype, 
@@ -294,10 +295,15 @@ class TransactionController(TaxController):
 	
 	def set_address(self, args):
 		address = self.get_address(args)
+		
+		if not address:
+			return
+		
 		if args.get("is_shipping_address"):
 			self.doc.shipping_address_name = address["name"]
 			self.doc.shipping_address = address["address_display"]
 		else:
+			self.doc.supplier_address = address["name"]
 			self.doc.customer_address = address["name"]
 			self.doc.address_display = address["address_display"]
 			
@@ -326,7 +332,7 @@ class TransactionController(TaxController):
 		
 		if address_result:
 			address_doc = Document("Address", fielddata=address_result[0])
-						
+			
 			address_display = "\n".join(filter(None, [
 				address_doc.address_line1,
 				address_doc.address_line2,

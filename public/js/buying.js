@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-wn.require("app/js/transaction.js")
+wn.require("app/js/taxes_and_totals.js")
 wn.provide("erpnext");
 
-erpnext.Buying = erpnext.Transaction.extend({
+erpnext.Buying = erpnext.TaxesAndTotals.extend({
 	toggle_fields: function() {
 		this.frm.toggle_display("contact_section", this.frm.doc.supplier);
 	},

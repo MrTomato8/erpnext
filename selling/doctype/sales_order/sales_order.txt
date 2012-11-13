@@ -274,7 +274,7 @@
   "doctype": "DocField", 
   "label": "Re-Calculate Values", 
   "trigger": "Client", 
-  "fieldname": "recalculate_values", 
+  "fieldname": "calculate_taxes_and_totals", 
   "fieldtype": "Button", 
   "search_index": 0, 
   "permlevel": 0

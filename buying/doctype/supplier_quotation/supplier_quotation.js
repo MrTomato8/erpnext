@@ -89,13 +89,6 @@ erpnext.buying.SupplierQuotation = erpnext.Buying.extend({
 				});
 		};
 	},
-	
-	load_precision_maps: function() {
-		// TODO
-		// if(!this.frm.precision) this.frm.precision = {};
-		// this.frm.precision.main = wn.model.get_precision_map("Purchase Request");
-		// this.frm.precision.item = wn.model.get_precision_map("Purchase Request Item");
-	}
 });
 
 cur_frm.cscript = new erpnext.buying.SupplierQuotation({

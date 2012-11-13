@@ -19,8 +19,8 @@ wn.provide("erpnext");
 erpnext.Transaction = Class.extend({
 	init: function(opts) {
 		$.extend(this, opts);
+		this.load_precision_maps();
 		this.setup_get_query && this.setup_get_query();
-		this.load_precision_maps && this.load_precision_maps();
 	},
 	
 	onload: function() {
@@ -34,6 +34,31 @@ erpnext.Transaction = Class.extend({
 			this.add_buttons();
 		}
 		this.toggle_fields && this.toggle_fields();
+	},
+	
+	load_precision_maps: function() {
+		this.frm.precision = {};
+		this.frm.precision.main = wn.meta.get_precision_map(this.frm.doc.doctype);
+		this.frm.precision.item = wn.meta.get_precision_map(this.frm.doc.doctype
+			+ " Item");
+		
+		var taxes_and_charges = wn.meta.get_docfield(this.frm.doc.doctype,
+			"taxes_and_charges");
+		if(taxes_and_charges) {
+			this.frm.precision.tax = wn.meta.get_precision_map(
+				taxes_and_charges.options.split("\n")[0]);
+		}
+	},
+	
+	get_item_table_field: function() {
+		if(!this.frm.item_table_field) {
+			this.frm.item_table_field = wn.meta.get("DocField", {
+				parent: this.frm.doc.doctype,
+				options: this.frm.doc.doctype + " Item", 
+				fieldtype: "Table"
+			})[0].fieldname;
+		}
+		return this.frm.item_table_field;
 	},
 	
 	set_missing_values: function() {
@@ -75,7 +100,7 @@ erpnext.Transaction = Class.extend({
 					expense_account: item.expense_account,
 					cost_center: item.cost_center
 				},
-				callback: function() {
+				callback: function(r) {
 					// update item doc
 					$.extend(locals[cdt][cdn], r.message);
 					if(this.custom_item_code) {
@@ -159,9 +184,9 @@ erpnext.Transaction = Class.extend({
 		this.frm.doc.is_stopped = 0;
 		this.frm.save(null, btn);
 	},
-	
 });
 
+// TODO: make a generic input dialog like javascript prompt box
 erpnext.InputDialog = function(title, input_label, method) {
 	var me = this;
 	dialog = new Dialog(400, 400, title);

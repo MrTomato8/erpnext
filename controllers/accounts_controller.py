@@ -25,9 +25,9 @@ from webnotes.model.doc import Document
 
 import json
 
-from controllers.transaction_controller import TransactionController
+from controllers.tax_controller import TaxController
 
-class AccountsController(TransactionController):
+class AccountsController(TaxController):
 	def make_gl_entries(self, cancel=False, adv_adj=False, mapper=None,
 			merge_entries=True,	update_outstanding='Yes', gl_map=None):
 		"""make gl entries based on jv, invoice or stock valuation"""

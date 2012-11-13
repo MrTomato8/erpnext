@@ -314,7 +314,7 @@
 	# DocField
 	{
 		u'doctype': u'DocField',
-		'fieldname': u'recalculate_values',
+		'fieldname': u'calculate_taxes_and_totals',
 		'fieldtype': u'Button',
 		'label': u'Re-Calculate Values',
 		'oldfieldtype': u'Button',

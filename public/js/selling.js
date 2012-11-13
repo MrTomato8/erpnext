@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-wn.require("app/js/transaction.js")
+wn.require("app/js/taxes_and_totals.js")
 wn.provide("erpnext");
 
-erpnext.Selling = erpnext.Transaction.extend({
+erpnext.Selling = erpnext.TaxesAndTotals.extend({
 	refresh: function(doc, cdt, cdn) {
 		this._super();
 		this.toggle_currency_display(doc, cdt, cdn);
