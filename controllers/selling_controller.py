@@ -25,9 +25,6 @@ import stock.utils
 from controllers.accounts_controller import AccountsController
 
 class SellingController(AccountsController):
-	def autoname(self):
-		self.doc.name = make_autoname(self.doc.naming_series+'.#####')
-	
 	def validate(self):
 		super(SellingController, self).validate()
 		self.validate_max_discount()
@@ -39,9 +36,9 @@ class SellingController(AccountsController):
 		if self.doc.order_type in ["Maintenance", "Service"]:
 			item_type = "service item"
 			item_type_field = "is_service_item"
-		elif sself.doc.order_type == "Sales":
+		elif self.doc.order_type == "Sales":
 			item_type = "sales item"
-			item_table_field = "is_sales_item"
+			item_type_field = "is_sales_item"
 			
 		for item in self.doclist.get({"parentfield": self.item_table_field}):
 			if webnotes.conn.get_value("Item", item.item_code, item_type_field) == "No":
@@ -73,7 +70,7 @@ class SellingController(AccountsController):
 		_check(self.doc.price_list_currency, self.doc.plc_exchange_rate, 'Price List')
 		
 	def validate_project(self):
-		if self.doc.get('project_name') and self.doc.customer != webnotes.conn.get_value(
+		if self.doc.project_name and self.doc.customer != webnotes.conn.get_value(
 				'Project', self.doc.project_name, 'customer'):
 			msgprint("Project: %s does not associate with customer: %s" 
 				% (self.doc.project_name, self.doc.customer), raise_exception=1)
@@ -83,6 +80,9 @@ class SellingController(AccountsController):
 			self.doclist.get({'parentfield': 'sales_team'})])
 		for d in self.doclist.get({"parentfield": 'sales_team'}):
 			d.allocated_percentage = d.allocated_percentage*100/total_contribution
+			
+	def check_duplicate(self, item_doclist, stock_items, non_stock_items):
+		pass
 	
 	def append_default_taxes(self):
 		"""called in on_map to add rows in tax table when they are missing"""
@@ -94,7 +94,7 @@ class SellingController(AccountsController):
 			if not self.doc.taxes_and_charges_master: return
 			self.append_taxes()
 	
-	def get_customer_details(self):
+	def get_customer_details(self, args):
 		# set primary address
 		self.set_address(args)
 		

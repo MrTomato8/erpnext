@@ -21,7 +21,7 @@ wn.provide("erpnext.selling");
 erpnext.selling.SalesOrder = erpnext.Selling.extend({
 	onload: function() {
 		this._super();
-		this.make_communication_body();
+		// this.make_communication_body();
 	},
 	
 	refresh: function() {
@@ -46,9 +46,10 @@ erpnext.selling.SalesOrder = erpnext.Selling.extend({
 				// maintenance
 				if (doc.per_delivered < 100 && (doc.order_type !='Sales')) {
 					this.frm.add_custom_button("Make Maintenance Visit",
-					 	funtion() { me.make_maintenance_visit(this);});
+					 	function() { me.make_maintenance_visit(this);});
+					
 					this.frm.add_custom_button("Make Maintenance Schedule",
-					 	funtion() { me.make_maintenance_schedule(this);});
+					 	function() { me.make_maintenance_schedule(this);});
 				}
 
 				// purchase request

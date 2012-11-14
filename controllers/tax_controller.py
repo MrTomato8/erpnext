@@ -270,7 +270,7 @@ class TaxController(TransactionController):
 			On Previous Row Amount and On Previous Row Total
 		"""
 		if tax.charge_type in ["On Previous Row Amount", "On Previous Row Total"] and \
-				(not tax.row_id or tax.row_id >= tax.idx):
+				(not tax.row_id or cint(tax.row_id) >= tax.idx):
 			msgprint((_("Row") + " # %(idx)s [%(taxes_doctype)s]: " + \
 				_("Please specify a valid") + " %(row_id_label)s") % {
 					"idx": tax.idx,
@@ -313,7 +313,8 @@ class TaxController(TransactionController):
 					}, raise_exception=True)
 					
 			elif tax.charge_type == "On Previous Row Amount" and \
-					not cint(self.tax_doclist[tax.row_id - 1].included_in_print_rate):
+					not cint(self.tax_doclist[cint(tax.row_id) - 1]\
+						.included_in_print_rate):
 				# for an inclusive tax of type "On Previous Row Amount",
 				# dependent row should also be inclusive
 				_on_previous_row_error(tax, tax.row_id)

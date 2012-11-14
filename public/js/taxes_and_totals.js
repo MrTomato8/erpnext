@@ -95,6 +95,8 @@ erpnext.TaxesAndTotals = erpnext.Transaction.extend({
 		refresh_field($.map(this.frm.precision.main, function(val, key) { return key; }));
 		refresh_field(this.get_item_table_field());
 		if(taxes_and_charges) refresh_field("taxes_and_charges");
+		
+		console.log("Taxes and Totals calculated.");
 	},
 	
 	calculate_item_values: function() {
@@ -161,16 +163,13 @@ erpnext.TaxesAndTotals = erpnext.Transaction.extend({
 		
 		$.each(this.frm.item_doclist, function(i, item) {
 			item_tax_map = me._load_item_tax_rate(item.item_tax_rate);
-			item.valuation_tax_amount = 0;
 			
 			$.each(me.frm.tax_doclist, function(i, tax) {
 				// tax_amount represents the amount of tax for the current step
 				var current_tax_amount = me.get_current_tax_amount(item, tax,
 					item_tax_map);
-				
-				if(me.set_valuation_tax_amount) {
-					me.set_valuation_tax_amount(item, tax, current_tax_amount);
-				}
+					
+				// Note: valuation tax amount calculation handled on server-side
 				
 				// case when net total is 0 but there is an actual type charge
 				// in this case add the actual amount to tax.tax_amount
@@ -223,7 +222,7 @@ erpnext.TaxesAndTotals = erpnext.Transaction.extend({
 					
 				} else {
 					tax.grand_total_for_current_item = 
-						flt(self.tax_doclist[i-1].grand_total_for_current_item +
+						flt(me.frm.tax_doclist[i-1].grand_total_for_current_item +
 							current_tax_amount, me.frm.precision.tax.total);
 					
 					// if inclusive pricing, current_tax_amount should not be considered
@@ -232,7 +231,7 @@ erpnext.TaxesAndTotals = erpnext.Transaction.extend({
 					}
 					
 					tax.grand_total_print_for_current_item = 
-						flt(self.tax_doclist[i-1].grand_total_print_for_current_item +
+						flt(me.frm.tax_doclist[i-1].grand_total_print_for_current_item +
 							(current_tax_amount / me.frm.doc.exchange_rate),
 							me.frm.precision.tax.total_print);
 					
@@ -421,6 +420,7 @@ erpnext.TaxesAndTotals = erpnext.Transaction.extend({
 				
 				item.ref_rate = flt(item.rate / (1 - (item.discount / 100.0)),
 					me.frm.precision.item.ref_rate);
+					
 			}
 		});
 	},
@@ -458,8 +458,9 @@ erpnext.TaxesAndTotals = erpnext.Transaction.extend({
 		return JSON.parse(item_tax_rate);
 	},
 	
-	_get_tax_rate: function(tax, item_tax_rate) {
-		if(item_tax_map.hasOwnProperty(tax.account_head)) {
+	_get_tax_rate: function(tax, item_tax_map) {
+		if(!$.isEmptyObject(item_tax_map) && 
+				item_tax_map.hasOwnProperty(tax.account_head)) {
 			return flt(item_tax_map[tax.account_head], this.frm.precision.tax.rate);
 		} else {
 			return tax.rate;

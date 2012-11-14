@@ -130,3 +130,6 @@ class DocType(SellingController):
 			"territory": lead["territory"] or ""
 		}
 		return ret
+		
+	def validate_prevdoclist(self):
+		pass

@@ -16,12 +16,14 @@
 
 from __future__ import unicode_literals
 import webnotes
+from webnotes import _
 from webnotes.utils import cstr, date_diff, flt, getdate, now
 from webnotes.model.doc import make_autoname
 from webnotes.model.utils import getlist
 from webnotes.model.controller import get_obj
 from webnotes import msgprint
 
+import stock.utils
 from controllers.selling_controller import SellingController
 
 class DocType(SellingController):

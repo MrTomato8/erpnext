@@ -36,6 +36,10 @@ erpnext.Transaction = Class.extend({
 		this.toggle_fields && this.toggle_fields();
 	},
 	
+	validate: function() {
+		
+	},
+	
 	load_precision_maps: function() {
 		this.frm.precision = {};
 		this.frm.precision.main = wn.meta.get_precision_map(this.frm.doc.doctype);
@@ -103,8 +107,8 @@ erpnext.Transaction = Class.extend({
 				callback: function(r) {
 					// update item doc
 					$.extend(locals[cdt][cdn], r.message);
-					if(this.custom_item_code) {
-						this.custom_item_code(doc, cdt, cdn);
+					if(me.custom_item_code) {
+						me.custom_item_code(doc, cdt, cdn);
 					}
 					refresh_field(me.item_table_field);
 				}

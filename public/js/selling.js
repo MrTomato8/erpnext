@@ -159,14 +159,14 @@ erpnext.Selling = erpnext.TaxesAndTotals.extend({
 		if (item.warehouse) {
 			wn.call({
 				doc: me.frm.doc,
-				method: "stock.utils.get_actual_qty"
+				method: "stock.utils.get_actual_qty",
 				args: {
 					"item_code": item.item_code,
 					"warehouse": item.warehouse,
 					"posting_date": me.frm.doc.posting_date,
 					"posting_time": me.frm.doc.posting_time || ""
 				},
-				callback: function(r, rt) {
+				callback: function(r) {
 					$.extend(locals[cdt][cdn], r.message);
 					refresh_field(me.item_table_field);
 				}
