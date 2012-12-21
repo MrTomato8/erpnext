@@ -28,7 +28,6 @@ class DocType:
 	def __init__(self, doc, doclist=[]):
 		self.doc = doc
 		self.doclist = doclist
-		self.item_dict = {}
 
 	def get_so_details(self, so):
 		"""Pull other details from so"""
@@ -235,53 +234,36 @@ class DocType:
 	def download_raw_materials(self):
 		""" Create csv data for required raw material to produce finished goods"""
 		bom_dict = self.get_distinct_items_and_boms()[0]
-		self.get_raw_materials(bom_dict)
-		return self.get_csv()
+		item_dict = self.get_raw_materials(bom_dict)
+		return self.get_csv(item_dict)
 
 	def get_raw_materials(self, bom_dict):
 		""" Get raw materials considering sub-assembly items """
+		import manufacturing.utils
+		
+		# item dict = { item_code: [qty, description, stock_uom] }
+		item_dict = {}
+		
+		def _make_items_dict(items_list):
+			"""makes dict of unique items with it's qty"""
+			for item in items_list:
+				if item_dict.has_key(item.item_code):
+					item_dict[item.item_code][0] += flt(item.qty)
+				else:
+					item_dict[item.item_code] = [flt(item.qty), item.description, item.stock_uom]
+					
 		for bom in bom_dict:
-			if self.doc.use_multi_level_bom:
-				# get all raw materials with sub assembly childs					
-				fl_bom_items = sql("""
-					select 
-						item_code,ifnull(sum(qty_consumed_per_unit),0)*%s as qty, 
-						description, stock_uom
-					from 
-						( 
-							select distinct fb.name, fb.description, fb.item_code,
-							 	fb.qty_consumed_per_unit, fb.stock_uom 
-							from `tabBOM Explosion Item` fb,`tabItem` it 
-							where it.name = fb.item_code 
-							and ifnull(it.is_pro_applicable, 'No') = 'No'
-							and ifnull(it.is_sub_contracted_item, 'No') = 'No' 
-							and fb.docstatus<2 and fb.parent=%s
-						) a
-					group by item_code,stock_uom
-				""" , (flt(bom_dict[bom]), bom))
-			else:
-				# Get all raw materials considering SA items as raw materials, 
-				# so no childs of SA items
-				fl_bom_items = sql("""
-					select item_code, ifnull(sum(qty_consumed_per_unit), 0) * '%s', 
-						description, stock_uom 
-					from `tabBOM Item` 
-					where parent = '%s' and docstatus < 2 
-					group by item_code
-				""" % (flt(bom_dict[bom]), bom))
+			raw_materials = manufacturing.utils.get_bom_raw_materials(flt(bom_dict[bom]), bom)
+			_make_items_dict(raw_materials)
 
-			self.make_items_dict(fl_bom_items)
+		return item_dict
+	
 
-	def make_items_dict(self, item_list):
-		for i in item_list:
-			self.item_dict[i[0]] = [(flt(self.item_dict.get(i[0], [0])[0]) + flt(i[1])), i[2], i[3]]
-
-
-	def get_csv(self):
+	def get_csv(self, item_dict):
 		item_list = [['Item Code', 'Description', 'Stock UOM', 'Required Qty', 'Warehouse',
 		 	'Quantity Requested for Purchase', 'Ordered Qty', 'Actual Qty']]
-		for d in self.item_dict:
-			item_list.append([d, self.item_dict[d][1], self.item_dict[d][2], self.item_dict[d][0]])
+		for d in item_dict:
+			item_list.append([d, item_dict[d][1], item_dict[d][2], item_dict[d][0]])
 			item_qty= sql("""select warehouse, indented_qty, ordered_qty, actual_qty 
 				from `tabBin` where item_code = %s""", d)
 			i_qty, o_qty, a_qty = 0, 0, 0

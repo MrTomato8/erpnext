@@ -143,6 +143,12 @@ cur_frm.fields_dict['production_order'].get_query = function(doc) {
 		order by name desc limit 50';
 }
 
+cur_frm.fields_dict['bom_no'].get_query = function(doc) {
+	return 'select name from `tabBOM` where docstatus = 1 and is_active = 1 AND \
+		%(key)s like "%s%%" order by name desc limit 50';
+}
+
+
 cur_frm.cscript.purpose = function(doc, cdt, cdn) {
 	cur_frm.cscript.toggle_related_fields(doc, cdt, cdn);
 }

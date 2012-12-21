@@ -166,7 +166,6 @@ var calculate_rm_cost = function(doc, dt, dn) {
 }
 
 
-// Calculate Total Cost
 var calculate_total = function(doc) {
 	doc.total_cost = flt(doc.raw_material_cost) + flt(doc.operating_cost);
 	refresh_field('total_cost');
@@ -174,10 +173,10 @@ var calculate_total = function(doc) {
 
 
 cur_frm.fields_dict['item'].get_query = function(doc) {
-	return 'SELECT DISTINCT `tabItem`.`name`, `tabItem`.description FROM `tabItem` \
-		WHERE is_manufactured_item = "Yes" and (IFNULL(`tabItem`.`end_of_life`,"") = "" OR \
-		 	`tabItem`.`end_of_life` = "0000-00-00" OR `tabItem`.`end_of_life` > NOW()) AND \
-		 	`tabItem`.`%(key)s` like "%s" ORDER BY `tabItem`.`name` LIMIT 50';
+	return 'SELECT name, description FROM `tabItem` \
+		WHERE (is_manufactured_item = "Yes" or is_sub_contracted_item = "Yes" and \
+		(IFNULL(end_of_life,"") = "" OR end_of_life > NOW()) AND %(key)s like "%s" \
+		ORDER BY `tabItem`.`name` LIMIT 50';
 }
 
 cur_frm.fields_dict['project_name'].get_query = function(doc, dt, dn) {
@@ -187,10 +186,9 @@ cur_frm.fields_dict['project_name'].get_query = function(doc, dt, dn) {
 }
 
 cur_frm.fields_dict['bom_materials'].grid.get_field('item_code').get_query = function(doc) {
-	return 'SELECT DISTINCT `tabItem`.`name`, `tabItem`.description FROM `tabItem` \
-		WHERE (IFNULL(`tabItem`.`end_of_life`,"") = "" OR `tabItem`.`end_of_life` = "0000-00-00" \
-			OR `tabItem`.`end_of_life` > NOW()) AND `tabItem`.`%(key)s` like "%s" \
-		ORDER BY `tabItem`.`name` LIMIT 50';
+	return 'SELECT name, description FROM tabItem \
+		WHERE name != "' + doc.item + '" and (IFNULL(end_of_life,"") = "" OR end_of_life > NOW()) \
+		AND %(key)s like "%s" ORDER BY `tabItem`.`name` LIMIT 50';
 }
 
 cur_frm.fields_dict['bom_materials'].grid.get_field('bom_no').get_query = function(doc, cdt, cdn) {

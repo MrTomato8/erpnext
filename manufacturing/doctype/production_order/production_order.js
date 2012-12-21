@@ -91,7 +91,6 @@ cur_frm.cscript.make_se = function(doc, purpose) {
 	se.company = doc.company;
 	se.fg_completed_qty = doc.qty - doc.produced_qty;
 	se.bom_no = doc.bom_no;
-	se.use_multi_level_bom = 1;
 	loaddoc('Stock Entry', se.name);
 }
 

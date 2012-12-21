@@ -2,9 +2,9 @@
  {
   "owner": "Administrator", 
   "docstatus": 0, 
-  "creation": "2012-12-19 12:29:07", 
+  "creation": "2012-12-20 14:31:15", 
   "modified_by": "Administrator", 
-  "modified": "2012-12-19 18:09:15"
+  "modified": "2012-12-21 17:43:31"
  }, 
  {
   "is_submittable": 1, 
@@ -259,25 +259,6 @@
  }, 
  {
   "print_hide": 1, 
-  "depends_on": "eval:!inList([\"Sales Return\", \"Purchase Return\"], doc.purpose)", 
-  "description": "As per Stock UOM", 
-  "no_copy": 0, 
-  "search_index": 0, 
-  "allow_on_submit": 0, 
-  "doctype": "DocField", 
-  "label": "Manufacturing Quantity", 
-  "oldfieldname": "fg_completed_qty", 
-  "fieldname": "fg_completed_qty", 
-  "fieldtype": "Currency", 
-  "oldfieldtype": "Currency", 
-  "reqd": 0, 
-  "hidden": 0, 
-  "in_filter": 0, 
-  "permlevel": 0, 
-  "report_hide": 0
- }, 
- {
-  "print_hide": 1, 
   "depends_on": "eval:doc.purpose==\"Sales Return\"", 
   "no_copy": 0, 
   "search_index": 1, 
@@ -321,14 +302,23 @@
   "permlevel": 0
  }, 
  {
-  "description": "If checked, BOM for sub-assembly items will be considered for getting raw materials. Otherwise, all sub-assembly items will be treated as a raw material.", 
-  "default": "1", 
+  "print_hide": 1, 
   "depends_on": "eval:!inList([\"Sales Return\", \"Purchase Return\"], doc.purpose)", 
+  "description": "As per Stock UOM", 
+  "no_copy": 0, 
+  "search_index": 0, 
+  "allow_on_submit": 0, 
   "doctype": "DocField", 
-  "label": "Use Multi-Level BOM", 
-  "fieldname": "use_multi_level_bom", 
-  "fieldtype": "Check", 
-  "permlevel": 0
+  "label": "Manufacturing Quantity", 
+  "oldfieldname": "fg_completed_qty", 
+  "fieldname": "fg_completed_qty", 
+  "fieldtype": "Currency", 
+  "oldfieldtype": "Currency", 
+  "reqd": 0, 
+  "hidden": 0, 
+  "in_filter": 0, 
+  "permlevel": 0, 
+  "report_hide": 0
  }, 
  {
   "print_hide": 1, 

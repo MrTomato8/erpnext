@@ -345,7 +345,7 @@ class DocType(TransactionBase):
 				if self.doc.production_order and self.doc.purpose == "Material Transfer":
 					item_dict = self.get_pending_raw_materials(pro_obj)
 				else:
-					item_dict = self.get_bom_raw_materials(self.doc.fg_completed_qty)
+					item_dict = self.get_bom_raw_materials(self.doc.fg_completed_qty)					
 
 				# add raw materials to Stock Entry Detail table
 				self.add_to_stock_entry_detail(self.doc.from_warehouse, self.doc.to_warehouse,
@@ -385,34 +385,12 @@ class DocType(TransactionBase):
 				else:
 					item_dict[item.item_code] = [flt(item.qty), item.description, item.stock_uom]
 		
-		if self.doc.use_multi_level_bom:
-			# get all raw materials with sub assembly childs					
-			fl_bom_sa_child_item = sql("""select 
-					item_code,ifnull(sum(qty_consumed_per_unit),0)*%s as qty,
-					description,stock_uom 
-				from (	select distinct fb.name, fb.description, fb.item_code,
-							fb.qty_consumed_per_unit, fb.stock_uom 
-						from `tabBOM Explosion Item` fb,`tabItem` it 
-						where it.name = fb.item_code and ifnull(it.is_pro_applicable, 'No') = 'No'
-						and ifnull(it.is_sub_contracted_item, 'No') = 'No' and fb.docstatus<2 
-						and fb.parent=%s
-					) a
-				group by item_code, stock_uom""" , (qty, self.doc.bom_no), as_dict=1)
-			
-			if fl_bom_sa_child_item:
-				_make_items_dict(fl_bom_sa_child_item)
-		else:
-			# Get all raw materials considering multi level BOM, 
-			# if multi level bom consider childs of Sub-Assembly items
-			fl_bom_sa_items = sql("""select item_code,
-				ifnull(sum(qty_consumed_per_unit), 0) * '%s' as qty,
-				description, stock_uom from `tabBOM Item` 
-				where parent = '%s' and docstatus < 2 
-				group by item_code""" % (qty, self.doc.bom_no), as_dict=1)
-			
-			if fl_bom_sa_items:
-				_make_items_dict(fl_bom_sa_items)
-			
+		import manufacturing.utils
+		raw_materials = manufacturing.utils.get_bom_raw_materials(qty, self.doc.bom_no)
+		
+		if raw_materials:
+			_make_items_dict(raw_materials)
+		
 		return item_dict
 	
 	def get_pending_raw_materials(self, pro_obj):

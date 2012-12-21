@@ -69,7 +69,7 @@ class DocType:
 	def get_item_det(self, item_code):
 		item = sql("""select name, is_asset_item, is_purchase_item, docstatus, description,
 		 	is_sub_contracted_item, stock_uom, default_bom, 
-			last_purchase_rate, standard_rate, is_manufactured_item 
+			last_purchase_rate, is_manufactured_item 
 			from `tabItem` where item_code = %s""", item_code, as_dict = 1)
 
 		return item
@@ -125,8 +125,6 @@ class DocType:
 				rate = self.get_valuation_rate(arg)
 			elif self.doc.rm_cost_as_per == 'Last Purchase Rate':
 				rate = arg['last_purchase_rate']
-			elif self.doc.rm_cost_as_per == 'Standard Rate':
-				rate = arg['standard_rate']
 
 		return rate
 
@@ -200,6 +198,7 @@ class DocType:
 	def validate_materials(self):
 		""" Validate raw material entries """
 		check_list = []
+		sub_assembly_items_without_bom = []
 		for m in getlist(self.doclist, 'bom_materials'):
 			# check if operation no not in op table
 			if self.doc.with_operations and cstr(m.operation_no) not in self.op:
@@ -209,11 +208,10 @@ class DocType:
 		
 			item = self.get_item_det(m.item_code)
 			if item[0]['is_manufactured_item'] == 'Yes':
-				if not m.bom_no:
-					msgprint("Please enter BOM No aginst item: %s at row no: %s" % 
-						(m.item_code, m.idx), raise_exception=1)
-				else:
+				if m.bom_no:
 					self.validate_bom_no(m.item_code, m.bom_no, m.idx)
+				else:
+					sub_assembly_items_without_bom.append(m.item_code)
 
 			elif m.bom_no:
 				msgprint("""As Item %s is not a manufactured / sub-contracted item, \
@@ -225,7 +223,12 @@ class DocType:
 					(m.item_code, m.idx), raise_exception = 1)
 
 			self.check_if_item_repeated(m.item_code, m.operation_no, check_list)
-
+		
+		if sub_assembly_items_without_bom:
+			msgprint(_("""Following sub-assembly items will be treated as raw materials, \
+				as BOM No. is not mentioned against them: \n""") + 
+				"\n".join(sub_assembly_items_without_bom))
+		
 	def validate_bom_no(self, item, bom_no, idx):
 		"""Validate BOM No of sub-contracted items"""
 		bom = sql("""select name from `tabBOM` where name = %s and item = %s 
